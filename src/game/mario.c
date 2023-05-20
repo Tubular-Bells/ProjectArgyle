@@ -851,7 +851,7 @@ u32 set_mario_action_airborne(struct MarioState *m, u32 action, u32 actionArg) {
 			break;
 			
 		case ACT_BOOST_JUMP:
-		    set_mario_y_vel_based_on_fspeed(m, 52.0f, 0.25f);
+		    set_mario_y_vel_based_on_fspeed(m, 28.0f, 0.25f);
 			break;
 			
 		case ACT_AIR_JUMP:
