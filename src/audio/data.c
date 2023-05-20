@@ -41,6 +41,109 @@ struct AudioSessionSettingsEU gAudioSessionPresets[] = {
 };
 #endif
 
+#ifdef BETTER_REVERB
+// Each entry represents an array of variable audio buffer sizes / delays for each respective filter.
+u32 delaysArr[][NUM_ALLPASS] = {
+    { /* 0 */ 
+        4, 4, 4,
+        4, 4, 4,
+        4, 4, 4,
+        4, 4, 4,
+    },
+    { /* 1 */ 
+        1080, 1352, 1200,
+        1200, 1232, 1432,
+        1384, 1048, 1352,
+         928, 1504, 1512,
+    },
+    { /* 2 */ 
+        1384, 1352, 1048,
+         928, 1512, 1504,
+        1080, 1200, 1352,
+        1200, 1432, 1232,
+    },
+};
+
+// Each entry represents an array of multipliers applied to the final output of each group of 3 filters.
+// These values are u8s in spirit, but are set as s32 values to slightly increase performance during calculations.
+s32 reverbMultsArr[][NUM_ALLPASS / 3] = {
+    /* 0 */ {0x00, 0x00, 0x00, 0x00},
+    /* 1 */ {0xD7, 0x6F, 0x36, 0x22},
+    /* 2 */ {0xCF, 0x73, 0x38, 0x1F},
+};
+
+/**
+ * Format:
+ * - useLightweightSettings (Reduce some runtime configurability options in favor of a slight speed boost during processing; Light configurability settings are found in synthesis.h)
+ * - downsampleRate         (Higher values exponentially reduce the number of input samples to process, improving perfomance at cost of quality)
+ * - isMono                 (Only process reverb on the left channel and share it with the right channel, improving performance at cost of quality)
+ * - filterCount            (Number of filters to process data with; in general, more filters means higher quality at the cost of performance demand; always 3 with light settings)
+ * 
+ * - windowSize             (Size of circular reverb buffer; higher values work better for a more open soundscape, lower is better for a more compact sound)
+ * - gain                   (Amount of audio retransmitted into the circular reverb buffer, emulating decay; higher values represent a lengthier decay period)
+ * - gainIndex              (Advanced parameter; used to tune the outputs of every first two of three filters; overridden when using light settings)
+ * - reverbIndex            (Advanced parameter; used to tune the incoming output of every third filter; overridden when using light settings)
+ * 
+ * - *delaysL               (Advanced parameter; array of variable audio buffer sizes / delays for each respective filter [left channel]; overridden when using light settings)
+ * - *delaysR               (Advanced parameter; array of variable audio buffer sizes / delays for each respective filter [right channel]; overridden when using light settings)
+ * - *reverbMultsL          (Advanced parameter; array of multipliers applied to the final output of each group of 3 filters [left channel])
+ * - *reverbMultsR          (Advanced parameter; array of multipliers applied to the final output of each group of 3 filters [right channel])
+ * 
+ * NOTE: The first entry will always be used by default when not using the level commands to specify a preset.
+ * Please reference the HackerSM64 Wiki for more descriptive documentation of these parameters and usage of BETTER_REVERB in general.
+ */
+struct BetterReverbSettings gBetterReverbSettings[] = {
+    { /* Preset 0 - Vanilla Reverb [Default Preset] */
+        .useLightweightSettings = FALSE,   // Ignored with vanilla reverb
+        .downsampleRate = -1,              // Signifies use of vanilla reverb
+        .isMono = FALSE,                   // Ignored with vanilla reverb
+        .filterCount = NUM_ALLPASS,        // Ignored with vanilla reverb
+
+        .windowSize = -1,                  // Use vanilla preset window size
+        .gain = -1,                        // Use vanilla preset gain value
+        .gainIndex = 0x00,                 // Ignored with vanilla reverb
+        .reverbIndex = 0x00,               // Ignored with vanilla reverb
+
+        .delaysL = delaysArr[0],           // Ignored with vanilla reverb
+        .delaysR = delaysArr[0],           // Ignored with vanilla reverb
+        .reverbMultsL = reverbMultsArr[0], // Ignored with vanilla reverb
+        .reverbMultsR = reverbMultsArr[0], // Ignored with vanilla reverb
+    },
+    { /* Preset 1 - Sample Console Configuration */
+        .useLightweightSettings = TRUE,
+        .downsampleRate = 2,
+        .isMono = FALSE,
+        .filterCount = (NUM_ALLPASS - 9),  // Ignored with lightweight settings
+
+        .windowSize = 0x0E00,
+        .gain = 0x43FF,
+        .gainIndex = 0xA0,                 // Ignored with lightweight settings
+        .reverbIndex = 0x30,               // Ignored with lightweight settings
+
+        .delaysL = delaysArr[1],
+        .delaysR = delaysArr[2],
+        .reverbMultsL = reverbMultsArr[1], // Ignored with lightweight settings
+        .reverbMultsR = reverbMultsArr[2], // Ignored with lightweight settings
+    },
+    { /* Preset 2 - Sample Emulator Configuration (RCVI Hack Only) */
+        .useLightweightSettings = FALSE,
+        .downsampleRate = 1,
+        .isMono = FALSE,
+        .filterCount = NUM_ALLPASS,
+
+        .windowSize = 0x0E00,
+        .gain = 0x28FF,
+        .gainIndex = 0xA0,
+        .reverbIndex = 0x60,
+
+        .delaysL = delaysArr[1],
+        .delaysR = delaysArr[2],
+        .reverbMultsL = reverbMultsArr[1],
+        .reverbMultsR = reverbMultsArr[2],
+    },
+};
+#endif
+
 // Format:
 // - frequency
 // - max number of simultaneous notes
@@ -76,10 +179,9 @@ struct ReverbSettingsUS gReverbSettings[18] = {
     { 1, 0x0800, 0x2FFF },
 };
 
-struct AudioSessionSettings gAudioSessionPresets[1] = {
-    { 32000, MAX_SIMULTANEOUS_NOTES, 1, 0x1000, 0x2FFF, 0x7FFF, PERSISTENT_SEQ_MEM, PERSISTENT_BANK_MEM, TEMPORARY_SEQ_MEM, TEMPORARY_BANK_MEM },
-};
+struct AudioSessionSettings gAudioSessionSettings = { 32000, MAX_SIMULTANEOUS_NOTES, 0x7FFF, PERSISTENT_SEQ_MEM, PERSISTENT_BANK_MEM, TEMPORARY_SEQ_MEM, TEMPORARY_BANK_MEM };
 #endif
+
 // gAudioCosineTable[k] = round((2**15 - 1) * cos(pi/2 * k / 127)). Unused.
 #if defined(VERSION_JP) || defined(VERSION_US)
 u16 gAudioCosineTable[128] = {

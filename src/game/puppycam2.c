@@ -486,7 +486,7 @@ void puppycam_init(void) {
     gPuppyCam.targetObj2 = NULL;
 
     gPuppyCam.intendedFlags = PUPPYCAM_BEHAVIOUR_DEFAULT;
-#ifndef DISABLE_LEVEL_SPECIFIC_CHECKS
+#ifdef ENABLE_VANILLA_LEVEL_SPECIFIC_CHECKS
     if (gCurrLevelNum == LEVEL_PSS || (gCurrLevelNum == LEVEL_TTM && gCurrAreaIndex == 2) || (gCurrLevelNum == LEVEL_CCM && gCurrAreaIndex == 2)) {
         gPuppyCam.intendedFlags |= PUPPYCAM_BEHAVIOUR_SLIDE_CORRECTION;
     }
@@ -1346,6 +1346,10 @@ void puppycam_loop(void) {
     if (!gPuppyCam.cutscene && sDelayedWarpOp == 0) {
         // Sets this before going through any possible modifications.
         gPuppyCam.flags = gPuppyCam.intendedFlags;
+#ifdef PUPPYPRINT_DEBUG
+        if (sPPDebugPage == PUPPYPRINT_PAGE_CAMERA)
+            gPuppyCam.flags |= PUPPYCAM_BEHAVIOUR_FREE | PUPPYCAM_BEHAVIOUR_PITCH_ROTATION | PUPPYCAM_BEHAVIOUR_YAW_ROTATION;
+#endif
         puppycam_input_core();
         puppycam_projection();
         puppycam_script();
